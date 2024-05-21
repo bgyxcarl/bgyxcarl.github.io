@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="Zirui Lee">
+
+
+
+    <meta name="description" content="鬼的博客">
+
+
+
+<title>網站配置 | PhysicalGhost</title>
+
+
+
+    <link rel="icon" href="/image/favicon.ico">
+
+
+
+
+    <!-- stylesheets list from _config.yml -->
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+
+
+
+    <!-- scripts list from _config.yml -->
+    
+    <script src="/js/script.js"></script>
+    
+    <script src="/js/tocbot.min.js"></script>
+    
+    <script src="/js/jquery.min.js"></script>
+    
+
+
+
+    
+    
+        
+    
+
+
+<!-- 搜索的部分 -->
+
+
+
+    <script>
+    // function searchToggle() {
+    //     const width = $(document.body).width()
+    //     if(width > 479) {
+    //         return;
+    //     }
+    //     const search = $('.search');
+    //     const searchForm = $('.form-search')
+
+    //     if(!search.hasClass("mobile-search")) {
+    //         search.addClass("mobile-search");
+    //     } else {
+    //         search.removeClass("mobile-search");
+    //     } 
+    // }
+
+    function searchToggle() {
+    const width = $(document.body).width()
+    if(width > 479) {
+        return;
+    }
+    const search = $('.search');
+    const searchForm = $('.form-search');
+    const menuToggle = $('.menu-toggle');
+    const title = $('.navbar-header-title ');
+
+    if(!search.hasClass("mobile-search")) {
+        search.addClass("mobile-search");
+        menuToggle.addClass("open-search")
+        title.addClass("mobile-title-hidden")
+    } else {
+        search.removeClass("mobile-search");
+        menuToggle.removeClass("open-search")
+        // title.css({visibility: 'visible'})
+        title.removeClass("mobile-title-hidden")
+    } 
+}
+
+
+
+    function search(searchInputEl, formEl, flag) {
+        const path = "/" + "search.json"; // 可以在public 下查看这个search.json
+        $(formEl).submit(function(e){
+            e.preventDefault();
+            let target = null
+            if(searchInputEl == null) {
+                const screenWidth = $(document.body).width();
+                target = screenWidth > 479 ? $('#pc-search-input') : $('#mobile-search-input');
+                console.log(target);
+            } else {
+                target = $(searchInputEl)
+            }
+
+            if(!flag && target.val() === '') {
+                return ;
+            }
+
+            $("#u-search").fadeIn(500, function() {
+                $("body > .wrapper").addClass("modal-active");
+
+                $.ajax({
+                    url: path,
+                    dataType: "json",
+                    beforeSend: function (xhr) {
+                        $input = target.val();
+                        $(".form-input").val($input);
+                        const loadingBar = $('.search-loading-bar') 
+                        loadingBar.css({
+                            width:'100%',
+                            display: 'block'
+                        });
+                    },
+                    success: function( datas ) {
+                        console.log(datas);
+                        const $resultPanel = $(".modal-body")[0];
+                        let str = `<ul class="modal-results">`;
+                        var keywords = $(".form-input").val().trim().toLowerCase().split(/[\s\-]+/);
+                        $resultPanel.innerHTML = "";
+                        let hasResult = false
+                        let text = `<div class="no-result">找不到与关键词相关的内容....</div>`;
+
+                        if ($(".form-input").val().trim().length <= 0) {
+                            // 没有结果
+                            $resultPanel.innerHTML = text;
+                            return;
+                        }
+                        datas.forEach(function (data, index) {
+                            var isMatch = true;
+                            if (!data.title || data.title.trim() === '') {
+                                data.title = "Untitled";
+                            }
+                            var data_title = data.title.trim().toLowerCase();
+                            var data_content = data.content && data.content.trim().replace(/<[^>]+>/g, "").toLowerCase() || '';
+                            var data_url = data.url;
+                            var index_title = -1;
+                            var index_content = -1;
+                            var first_occur = -1;
+                            // only match artiles with not empty contents
+                            if (data_content !== '') {
+                                keywords.forEach(function (keyword, i) {
+                                    index_title = data_title.indexOf(keyword);
+                                    index_content = data_content.indexOf(keyword);
+
+                                    if (index_title < 0 && index_content < 0) {
+                                        isMatch = false;
+                                    } else {
+                                        hasResult = true
+                                        if (index_content < 0) {
+                                            index_content = 0;
+                                        }
+                                        if (i == 0) {
+                                            first_occur = index_content;
+                                        }
+                                    }
+                                });
+                            } else {
+                                isMatch = false;
+                            }
+                            // show search results
+                            if (isMatch) {
+                                str += `<li class='result-item'><a href='${data_url}' class='result-item-detail'> <span class="title">${data_title}</span>`;
+                                var content = data.content.trim().replace(/<[^>]+>/g, "");
+                                if (first_occur >= 0) {
+                                    // cut out 200 characters
+                                    var start = first_occur - 40;
+                                    var end = first_occur + 160;
+
+                                    if (start < 0) {
+                                        start = 0;
+                                    }
+
+                                    if (start == 0) {
+                                        end = 200;
+                                    }
+
+                                    if (end > content.length) {
+                                        end = content.length;
+                                    }
+
+                                    var match_content = content.substring(start, end);
+
+                                    // highlight all keywords
+                                    keywords.forEach(function (keyword) {
+                                        var regS = new RegExp(keyword, "gi");
+                                        match_content = match_content.replace(regS, `<em class="search-keyword">${keyword}</em>`);
+                                    });
+
+                                    str += `<span class="content"> ${match_content} ...</span></a>`;
+                                }
+                                str += "</li>";
+                            }
+                        });
+                        str += "</ul>";
+                        if(hasResult) {
+                            $resultPanel.innerHTML = str;
+                        } else {
+                            $resultPanel.innerHTML = text;
+                        }
+
+                    },
+                    complete: function() {
+                        setTimeout(() => {
+                                const loadingBar = $('.search-loading-bar') 
+                                loadingBar.css({
+                                    width:'0%',
+                                    display: 'none'
+                                });
+                        }, 300)
+                    }
+                });
+            })
+
+        });
+    }
+
+    $(document).ready(function() {
+        $('.modal-close').click(function () { 
+            $("#u-search").fadeOut();
+            $("body > .wrapper").removeClass("modal-active")
+        })
+
+        $('.modal-overlay').click(function() {
+            $("#u-search").fadeOut();
+            $("body > .wrapper").removeClass("modal-active")
+        })
+        search(null, ".form-search", false)
+        search("#u-search-modal-form .form-input", ".u-search-modal-form", true)
+    })
+</script>
+
+<meta name="generator" content="Hexo 7.2.0">
+<style>.github-emoji { position: relative; display: inline-block; width: 1.2em; min-height: 1.2em; overflow: hidden; vertical-align: top; color: transparent; }  .github-emoji > span { position: relative; z-index: 10; }  .github-emoji img, .github-emoji .fancybox { margin: 0 !important; padding: 0 !important; border: none !important; outline: none !important; text-decoration: none !important; user-select: none !important; cursor: auto !important; }  .github-emoji img { height: 1.2em !important; width: 1.2em !important; position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; user-select: none !important; cursor: auto !important; } .github-emoji-fallback { color: inherit; } .github-emoji-fallback img { opacity: 0 !important; }</style>
+</head>
+
+<body>
+    <script>
+        // this function is used to check current theme before page loaded.
+        (() => {
+            const currentTheme = window.localStorage && window.localStorage.getItem('theme') || '';
+            const isDark = currentTheme === 'dark';
+            const pagebody = document.getElementsByTagName('body')[0]
+            if (isDark) {
+                pagebody.classList.add('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Dark"
+            } else {
+                pagebody.classList.remove('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Light"
+            }
+        })();
+    </script>
+
+    <div class="wrapper">
+        <header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-header header-logo"><a href="/">Ghost&#39;s Blog</a></div>
+            <div class="menu navbar-right">
+                <!-- 这里表示的是pc端搜索框 -->
+                
+                
+    <div class="search ">
+        <div class="search-btn" onClick="searchToggle()">
+            <img src="/image/search.png" class="search-btn-img" />
+        </div>
+        <form class="form-search">
+            <input class="input" placeholder="点此搜索" autocomplete="off" id="pc-search-input"/>
+        </form>
+    </div>
+
+                
+                    <a class="menu-item" href="/archives">Posts</a>
+                
+                    <a class="menu-item" href="/category">Categories</a>
+                
+                    <a class="menu-item" href="/tag">Tags</a>
+                
+                    <a class="menu-item" href="/about">About</a>
+                
+                <input id="switch_default" type="checkbox" class="switch_default">
+                <label for="switch_default" class="toggleBtn"></label>
+            </div>
+        </div>
+    </nav>
+
+    
+    <nav class="navbar-mobile" id="nav-mobile">
+        <div class="container">
+            <div class="navbar-header">
+                <div>
+                    <a href="/">Ghost&#39;s Blog</a><a id="mobile-toggle-theme">·&nbsp;Light</a>
+                </div>
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; Menu</div>
+            </div>
+            <div class="navbar-mobile-right">
+                
+                
+    <div class="search ">
+        <div class="search-btn" onClick="searchToggle()">
+            <img src="/image/search.png" class="search-btn-img" />
+        </div>
+        <form class="form-search">
+            <input class="input" placeholder="点此搜索" autocomplete="off" id="mobile-search-input"/>
+        </form>
+    </div>
+
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; 目录</div>
+            </div>
+            <div class="menu" id="mobile-menu">
+                
+                    <a class="menu-item" href="/archives">Posts</a>
+                
+                    <a class="menu-item" href="/category">Categories</a>
+                
+                    <a class="menu-item" href="/tag">Tags</a>
+                
+                    <a class="menu-item" href="/about">About</a>
+                
+            </div>
+        </div>
+    </nav>
+
+</header>
+<script>
+    var mobileBtn = function f() {
+        var toggleMenu = document.getElementsByClassName("menu-toggle")[0];
+        var mobileMenu = document.getElementById("mobile-menu");
+        if(toggleMenu.classList.contains("active")){
+           toggleMenu.classList.remove("active")
+            mobileMenu.classList.remove("active")
+        }else{
+            toggleMenu.classList.add("active")
+            mobileMenu.classList.add("active")
+        }
+    }
+</script>
+            <div class="main">
+                <div class="container">
+    
+    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">Expand all</a>
+        <a onclick="go_top()">Back to top</a>
+        <a onclick="go_bottom()">Go to bottom</a>
+    </div>
+</div>
+
+<script>
+    var tocbot_timer;
+    var DEPTH_MAX = 6; // 为 6 时展开所有
+    var tocbot_default_config = {
+        tocSelector: '.tocbot-list',
+        contentSelector: '.post-content',
+        headingSelector: 'h1, h2, h3, h4, h5',
+        orderedList: false,
+        scrollSmooth: true,
+        onClick: extend_click,
+    };
+
+    function extend_click() {
+        clearTimeout(tocbot_timer);
+        tocbot_timer = setTimeout(function() {
+            tocbot.refresh(obj_merge(tocbot_default_config, {
+                hasInnerContainers: true
+            }));
+        }, 420); // 这个值是由 tocbot 源码里定义的 scrollSmoothDuration 得来的
+    }
+
+    document.ready(function() {
+        tocbot.init(obj_merge(tocbot_default_config, {
+            collapseDepth: 1
+        }));
+    });
+
+    function expand_toc() {
+        var b = document.querySelector('.tocbot-toc-expand');
+        var expanded = b.getAttribute('data-expanded');
+        expanded ? b.removeAttribute('data-expanded') : b.setAttribute('data-expanded', true);
+        tocbot.refresh(obj_merge(tocbot_default_config, {
+            collapseDepth: expanded ? 1 : DEPTH_MAX
+        }));
+        b.innerText = expanded ? 'Expand all' : 'Collapse all';
+    }
+
+    function go_top() {
+        window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function obj_merge(target, source) {
+        for (var item in source) {
+            if (source.hasOwnProperty(item)) {
+                target[item] = source[item];
+            }
+        }
+        return target;
+    }
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title">網站配置</h1>
+            
+                <div class="post-meta">
+                    
+                        Author: <a itemprop="author" rel="author" href="/">Zirui Lee</a>
+                    
+
+                    
+                        <span class="post-time">
+                        Date: <a href="#">May 11, 2024&nbsp;&nbsp;13:16:02</a>
+                        </span>
+                    
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <p>正如域名，这是一个用于记录我所学所想的网站，这篇博客是记录目前网站更新状况及具体的操作步骤。</p>
+<p>推荐教程，本网站配置均源自以下教程：<br>Myoontyee ：<a target="_blank" rel="noopener" href="https://myoontyee.github.io/article/551b025b.html#%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C">Hexo + Chic 配置教程归纳</a><br>Z小旋 ：<a target="_blank" rel="noopener" href="https://blog.csdn.net/as480133937/article/details/100138838">Hexo-Next 主题博客个性化配置超详细</a></p>
+<hr>
+<h2 id="网站主题：-hexo-theme-Chic"><a href="#网站主题：-hexo-theme-Chic" class="headerlink" title="网站主题： hexo-theme-Chic"></a>网站主题： <a target="_blank" rel="noopener" href="https://github.com/Siricee/hexo-theme-Chic">hexo-theme-Chic</a></h2><h2 id="添加搜索功能："><a href="#添加搜索功能：" class="headerlink" title="添加搜索功能："></a><strong><u>添加搜索功能</u>：</strong></h2><h3 id="依赖部署："><a href="#依赖部署：" class="headerlink" title="依赖部署："></a><strong>依赖部署：</strong></h3><h4 id="生成search-json文件："><a href="#生成search-json文件：" class="headerlink" title="生成search.json文件："></a>生成<code>search.json</code>文件：</h4><blockquote>
+<p>进入到根目录下，通过以下命令安装<br><code>npm install hexo-generator-search</code>  </p>
+</blockquote>
+<ul>
+<li><code>search.json</code>在根目录下<code>.\node_modules\hexo-generator-search\demo_output\search.json</code></li>
+</ul>
+<h4 id="配置jquery："><a href="#配置jquery：" class="headerlink" title="配置jquery："></a><strong>配置jquery：</strong></h4><blockquote>
+<p>进入<a target="_blank" rel="noopener" href="https://jquery.com/download/">下载页面</a>，可以下载Production version，放入./themes/Chic/source/js/下：</p>
+<ul>
+<li><p>如果点击下图链接打开是一个源码页面</p>
+<p>那么可以在对应文件夹下创建一个记事本，改为jquery-3.6.0.min.js，将源码页面的源码复制粘贴进去</p>
+<p>或直接右键点击下面链接，选择另存为即可</p>
+</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>在<code>./themes/Chic/</code>下的<code>_config.yml</code>文件里<code>script</code>段添加如下内容：</p>
+<p><code>- /js/jquery.min.js</code></p>
+</blockquote>
+<h4 id="搜索的Logo："><a href="#搜索的Logo：" class="headerlink" title="搜索的Logo："></a>搜索的Logo：</h4><blockquote>
+<p>选一个Logo，比如<a target="_blank" rel="noopener" href="https://raw.githubusercontent.com/maojinyuan/hexo_repository/main/%E9%9B%B6%E6%95%A3%E7%9A%84%E6%96%87%E4%BB%B6/search.png">这个放大镜</a>，放入./themes/Chic/source/image/</p>
+<p>在<code>./themes/Chic</code>下的<code>_config.yml</code>文件尾行写入<code>searchImg: /image/search.png</code></p>
+</blockquote>
+<h3 id="配置Blog源码根目录下的-config-yml："><a href="#配置Blog源码根目录下的-config-yml：" class="headerlink" title="配置Blog源码根目录下的_config.yml："></a>配置Blog源码根目录下的<code>_config.yml</code>：</h3><blockquote>
+<p>打开./_config.yml，在最下方写入如下代码：</p>
+<figure class="highlight yaml"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># search//please insert in the end of the body  </span></span><br><span class="line"><span class="attr">search:</span>  </span><br><span class="line"> <span class="attr">enable:</span> <span class="literal">true</span>  </span><br><span class="line"> <span class="attr">path:</span> <span class="string">search.json</span>  </span><br><span class="line"> <span class="attr">field:</span> <span class="string">post</span>  </span><br><span class="line"> <span class="attr">content:</span> <span class="literal">true</span></span><br></pre></td></tr></tbody></table></figure>
+</blockquote>
+<h3 id="添加modal（包含html和css）"><a href="#添加modal（包含html和css）" class="headerlink" title="添加modal（包含html和css）:"></a>添加modal（包含html和css）:</h3><blockquote>
+<h5 id="html"><a href="#html" class="headerlink" title="html"></a>html</h5><blockquote>
+<ul>
+<li><p>打开<code>./themes/Chic/layout/layout.ejs</code>底部，在<code>&lt;/html&gt;</code>添加以下代码，这段代码控制的内容如下</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 搜索功能 --&gt;</span><br><span class="line">&lt;!-- Chic/layout.ejs --&gt;</span><br><span class="line">&lt;div id="u-search"&gt;</span><br><span class="line">    &lt;div class="modal"&gt;</span><br><span class="line">        &lt;div class="modal-header"&gt;</span><br><span class="line">            &lt;div class="container"&gt;</span><br><span class="line">                &lt;form id="u-search-modal-form" class="u-search-modal-form"&gt;</span><br><span class="line">                    &lt;button type="submit" class="form-submit-btn"&gt;</span><br><span class="line">                        &lt;img src="&lt;%- url_for(theme.searchImg) %&gt;" class="search-btn-img" /&gt;</span><br><span class="line">                    &lt;/button&gt;</span><br><span class="line">                    &lt;input placeholder="搜索内容..." class="form-input" id="modal-form-input"&gt;</span><br><span class="line">                &lt;/form&gt;</span><br><span class="line">                &lt;a class="modal-close"&gt;x&lt;/a&gt;</span><br><span class="line">            &lt;/div&gt;</span><br><span class="line">            &lt;div class="search-loading"&gt;</span><br><span class="line">                &lt;div class="search-loading-bar"&gt;&lt;/div&gt;</span><br><span class="line">            &lt;/div&gt;</span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">        &lt;div class="modal-body"&gt;</span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">    &lt;/div&gt;</span><br><span class="line">    &lt;div class="modal-overlay"&gt;&lt;/div&gt;</span><br><span class="line">&lt;/div&gt;</span><br></pre></td></tr></tbody></table></figure></li>
+</ul>
+</blockquote>
+<h5 id="css"><a href="#css" class="headerlink" title="css"></a>css</h5><blockquote>
+<ul>
+<li><p>在<code>./themes/Chic/source/css/_lib/</code>下新建文件<code>search.css</code>，写入以下代码</p>
+<figure class="highlight css"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br><span class="line">347</span><br><span class="line">348</span><br><span class="line">349</span><br><span class="line">350</span><br><span class="line">351</span><br><span class="line">352</span><br><span class="line">353</span><br><span class="line">354</span><br><span class="line">355</span><br><span class="line">356</span><br><span class="line">357</span><br><span class="line">358</span><br><span class="line">359</span><br><span class="line">360</span><br><span class="line">361</span><br><span class="line">362</span><br><span class="line">363</span><br><span class="line">364</span><br><span class="line">365</span><br><span class="line">366</span><br><span class="line">367</span><br><span class="line">368</span><br><span class="line">369</span><br><span class="line">370</span><br><span class="line">371</span><br><span class="line">372</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-id">#u-search</span> {</span><br><span class="line">    <span class="attribute">display</span>: none;</span><br><span class="line">    <span class="attribute">position</span>: fixed;</span><br><span class="line">    <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">left</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">padding</span>: <span class="number">60px</span> <span class="number">20px</span>;</span><br><span class="line">    <span class="attribute">z-index</span>: <span class="number">1001</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> {</span><br><span class="line">    <span class="attribute">position</span>: fixed;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">80%</span>;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">max-width</span>: <span class="number">640px</span>;</span><br><span class="line">    <span class="attribute">left</span>: <span class="number">50%</span>;</span><br><span class="line">    <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">margin</span>: <span class="number">64px</span> <span class="number">0px</span> <span class="number">0px</span> -<span class="number">320px</span>;</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#fff</span>;</span><br><span class="line">    <span class="attribute">z-index</span>: <span class="number">3</span>;</span><br><span class="line">    <span class="attribute">border-radius</span>: <span class="number">4px</span>;</span><br><span class="line">    <span class="attribute">overflow</span>: hidden;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> {</span><br><span class="line">    <span class="attribute">position</span>: relative;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">64px</span>;</span><br><span class="line">    <span class="attribute">z-index</span>: <span class="number">3</span>;</span><br><span class="line">    <span class="attribute">border-top-left-radius</span>: <span class="number">4px</span>;</span><br><span class="line">    <span class="attribute">border-top-right-radius</span>: <span class="number">4px</span>;</span><br><span class="line">    <span class="attribute">font-size</span>: <span class="number">16px</span>;</span><br><span class="line">    <span class="attribute">box-shadow</span>: <span class="number">0</span> <span class="number">1px</span> <span class="number">2px</span> <span class="number">0px</span> <span class="built_in">rgba</span>(<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">0.1</span>);</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#fff</span>;</span><br><span class="line">    <span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -moz-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -webkit-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -o-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> <span class="selector-class">.container</span>{</span><br><span class="line">    <span class="attribute">display</span>: flex;</span><br><span class="line">    <span class="attribute">flex-direction</span>: row;</span><br><span class="line">    <span class="attribute">align-items</span>: center;</span><br><span class="line">    <span class="attribute">padding</span>: <span class="number">0px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> <span class="selector-class">.container</span> <span class="selector-class">.u-search-modal-form</span> {</span><br><span class="line">    <span class="attribute">display</span>: flex;</span><br><span class="line">    <span class="attribute">flex-direction</span>: row;</span><br><span class="line">    <span class="attribute">align-items</span>: center;</span><br><span class="line">    <span class="attribute">flex</span>: <span class="number">1</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.u-search-modal-form</span> <span class="selector-class">.form-submit-btn</span> {</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">50px</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">64px</span>;</span><br><span class="line">    <span class="attribute">background</span>: none;</span><br><span class="line">    <span class="attribute">border</span>: none;</span><br><span class="line">    <span class="attribute">outline</span>: none;</span><br><span class="line">    <span class="attribute">margin</span>:  <span class="number">0</span> <span class="number">5px</span> <span class="number">0</span> <span class="number">5px</span> ;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.u-search-modal-form</span> <span class="selector-class">.form-submit-btn</span> <span class="selector-tag">img</span> {</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">33px</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">33px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> <span class="selector-class">.container</span> <span class="selector-class">.u-search-modal-form</span> <span class="selector-class">.form-input</span> {</span><br><span class="line">    <span class="attribute">flex</span>: <span class="number">1</span>;</span><br><span class="line">    <span class="attribute">margin-right</span>: <span class="number">15px</span>;</span><br><span class="line">    <span class="attribute">border</span>: none;</span><br><span class="line">    <span class="attribute">padding</span>: <span class="number">10px</span> <span class="number">10px</span>;</span><br><span class="line">    <span class="attribute">outline</span>: none;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> <span class="selector-class">.modal-close</span> {</span><br><span class="line">    <span class="attribute">display</span>: block;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">55px</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">64px</span>;</span><br><span class="line">    <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">right</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">color</span>: <span class="number">#2196f3</span>;</span><br><span class="line">    <span class="attribute">cursor</span>: pointer;</span><br><span class="line">    <span class="attribute">text-align</span>: center;</span><br><span class="line">    <span class="attribute">line-height</span>: <span class="number">64px</span>;</span><br><span class="line">    <span class="attribute">vertical-align</span>: middle;</span><br><span class="line">    <span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -moz-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -webkit-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -o-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    <span class="attribute">z-index</span>: <span class="number">2</span>;</span><br><span class="line">    <span class="attribute">font-size</span>: <span class="number">22px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> <span class="selector-class">.search-loading</span> {</span><br><span class="line">    <span class="attribute">position</span>: absolute;</span><br><span class="line">    <span class="attribute">bottom</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">left</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">2px</span>;</span><br><span class="line">    <span class="attribute">background</span>: transparent;</span><br><span class="line">    <span class="attribute">z-index</span>: <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> <span class="selector-class">.search-loading</span> <span class="selector-class">.search-loading-bar</span> {</span><br><span class="line">    <span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -moz-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -webkit-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    -o-<span class="attribute">transition</span>: all <span class="number">0.28s</span> ease;</span><br><span class="line">    <span class="attribute">position</span>: relative;</span><br><span class="line">    <span class="attribute">display</span>: none;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">0%</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#2196f3</span>;</span><br><span class="line"></span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span> {</span><br><span class="line">    <span class="attribute">padding</span>: <span class="number">15px</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="built_in">calc</span>(<span class="number">100%</span> - <span class="number">85px</span>);</span><br><span class="line">    <span class="attribute">overflow</span>: auto;</span><br><span class="line"></span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span>::-webkit-scrollbar{</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">5px</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">5px</span>;</span><br><span class="line">    <span class="comment">/**/</span></span><br><span class="line">}</span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span>::-webkit-scrollbar-track{</span><br><span class="line">    <span class="attribute">background</span>: <span class="built_in">rgb</span>(<span class="number">239</span>, <span class="number">239</span>, <span class="number">239</span>);</span><br><span class="line">    <span class="attribute">border-radius</span>:<span class="number">2px</span>;</span><br><span class="line">}</span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span>::-webkit-scrollbar-thumb{</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#bfbfbf</span>;</span><br><span class="line">    <span class="attribute">border-radius</span>:<span class="number">10px</span>;</span><br><span class="line">}</span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span>::-webkit-scrollbar-thumb:hover{</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#333</span>;</span><br><span class="line">}</span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span>::-webkit-scrollbar-corner{</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#179a16</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span> <span class="selector-class">.modal-results</span> {</span><br><span class="line">    <span class="attribute">list-style</span>: none;</span><br><span class="line">    <span class="attribute">padding-left</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">margin</span>: <span class="number">0px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span> <span class="selector-class">.modal-results</span> <span class="selector-class">.result-item</span> {</span><br><span class="line">    <span class="attribute">padding</span>: <span class="number">15px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span> <span class="selector-class">.modal-results</span> <span class="selector-class">.result-item</span><span class="selector-pseudo">:hover</span> {</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#e8f4fd</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span> <span class="selector-class">.modal-results</span> <span class="selector-class">.result-item</span> <span class="selector-class">.result-item-detail</span> {</span><br><span class="line">    <span class="attribute">display</span>: flex;</span><br><span class="line">    <span class="attribute">flex-direction</span>: column;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span> <span class="selector-class">.modal-results</span> <span class="selector-class">.result-item</span> <span class="selector-class">.result-item-detail</span> <span class="selector-class">.title</span> {</span><br><span class="line">    <span class="attribute">color</span>: <span class="number">#6e6e6e</span>;</span><br><span class="line">    <span class="attribute">font-weight</span>: <span class="number">700</span>;</span><br><span class="line">    <span class="attribute">font-size</span>: <span class="number">18px</span>;</span><br><span class="line">    <span class="attribute">margin-bottom</span>: <span class="number">10px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> <span class="selector-class">.modal-body</span> <span class="selector-class">.modal-results</span> <span class="selector-class">.result-item</span> <span class="selector-class">.result-item-detail</span> <span class="selector-class">.content</span> {</span><br><span class="line">    <span class="attribute">display</span>: block;</span><br><span class="line">    <span class="attribute">white-space</span>: inherit;</span><br><span class="line">    <span class="attribute">word-break</span>: break-all;</span><br><span class="line">    <span class="attribute">text-overflow</span>: ellipsis;</span><br><span class="line">    <span class="attribute">font-size</span>: <span class="number">14px</span>;</span><br><span class="line">    <span class="attribute">color</span>: <span class="built_in">rgba</span>(<span class="number">85</span>,<span class="number">85</span>,<span class="number">85</span>,<span class="number">0.65</span>);</span><br><span class="line">    <span class="attribute">letter-spacing</span>: <span class="number">1px</span>;</span><br><span class="line">    user-select: none;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.search-keyword</span> {</span><br><span class="line">    <span class="attribute">color</span>: <span class="number">#0c7cd5</span>;</span><br><span class="line">    <span class="attribute">text-decoration</span>: underline;</span><br><span class="line">    <span class="attribute">font-weight</span>: bold;</span><br><span class="line">    <span class="attribute">font-style</span>:normal</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-body</span> <span class="selector-class">.no-result</span> {</span><br><span class="line">    <span class="attribute">display</span>: flex;</span><br><span class="line">    <span class="attribute">flex-direction</span>: column;</span><br><span class="line">    <span class="attribute">align-items</span>: center;</span><br><span class="line">    <span class="attribute">justify-content</span>: center;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-id">#u-search</span> <span class="selector-class">.modal-overlay</span> {</span><br><span class="line">    <span class="attribute">position</span>: absolute;</span><br><span class="line">    <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">left</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">background</span>: <span class="built_in">rgba</span>(<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">0.7</span>);</span><br><span class="line">    <span class="attribute">z-index</span>: <span class="number">1</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="keyword">@media</span> screen <span class="keyword">and</span> (<span class="attribute">max-width</span>: <span class="number">680px</span>) {</span><br><span class="line">    <span class="selector-id">#u-search</span> {</span><br><span class="line">        <span class="attribute">padding</span>: <span class="number">0px</span>;</span><br><span class="line">        <span class="attribute">display</span>: none;</span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">    <span class="selector-id">#u-search</span> <span class="selector-class">.modal</span> {</span><br><span class="line">        <span class="attribute">box-shadow</span>: none;</span><br><span class="line">        <span class="attribute">max-width</span>: none;</span><br><span class="line">        <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">        <span class="attribute">left</span>: <span class="number">0</span>;</span><br><span class="line">        <span class="attribute">margin</span>: <span class="number">0</span>;</span><br><span class="line">        <span class="attribute">height</span>: <span class="number">100%</span>;</span><br><span class="line">        <span class="attribute">border-radius</span>: <span class="number">0</span>;</span><br><span class="line">    }</span><br><span class="line">    <span class="selector-id">#u-search</span> <span class="selector-class">.modal-header</span> {</span><br><span class="line">        <span class="attribute">border-radius</span>: <span class="number">0</span>;</span><br><span class="line">        <span class="attribute">padding</span>: <span class="number">0px</span>;</span><br><span class="line">    }</span><br><span class="line">} </span><br><span class="line"></span><br><span class="line"><span class="selector-class">.modal-active</span> {</span><br><span class="line">    <span class="attribute">position</span>: fixed;</span><br><span class="line">    <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">left</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">right</span>: <span class="number">0</span>;</span><br><span class="line">    <span class="attribute">bottom</span>: <span class="number">0</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 以下是搜索框 */</span></span><br><span class="line"><span class="selector-class">.search</span> {</span><br><span class="line">    <span class="attribute">margin-right</span>: <span class="number">6px</span>;</span><br><span class="line">    <span class="attribute">display</span>: flex;</span><br><span class="line">    <span class="attribute">flex-direction</span>: row;</span><br><span class="line">    <span class="attribute">align-items</span>: center;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-class">.search</span> <span class="selector-class">.form-search</span> {</span><br><span class="line">    <span class="attribute">padding</span>: <span class="number">10px</span> <span class="number">8px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-class">.search</span> <span class="selector-class">.form-search</span> <span class="selector-class">.input</span> {</span><br><span class="line">    <span class="attribute">display</span>: block;</span><br><span class="line">    <span class="attribute">line-height</span>: <span class="number">1.3</span>;</span><br><span class="line">    <span class="attribute">color</span>: <span class="number">#555</span>;</span><br><span class="line">    <span class="attribute">background</span>: <span class="number">#e8e8e8</span>;</span><br><span class="line">    <span class="attribute">padding</span>: <span class="number">5px</span> <span class="number">8px</span>;</span><br><span class="line">    <span class="attribute">box-shadow</span>: none;</span><br><span class="line">    <span class="attribute">box-sizing</span>: border-box;</span><br><span class="line">    <span class="attribute">font-size</span>: <span class="number">1rem</span>;</span><br><span class="line">    <span class="attribute">border-radius</span>: <span class="number">8px</span>;</span><br><span class="line">    <span class="attribute">border</span>: none;</span><br><span class="line">    <span class="attribute">outline</span>: none;</span><br><span class="line">}        </span><br><span class="line"></span><br><span class="line"><span class="selector-class">.search</span> <span class="selector-class">.search-btn</span> {</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">22px</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">22px</span>;</span><br><span class="line">    <span class="attribute">line-height</span>: <span class="number">22px</span>;</span><br><span class="line">    <span class="attribute">margin-right</span>: <span class="number">5px</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"><span class="selector-class">.search</span> <span class="selector-class">.search-btn</span> <span class="selector-class">.search-btn-img</span> {</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">100%</span>;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">}</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 搜索框修改 */</span></span><br><span class="line"><span class="keyword">@media</span> screen <span class="keyword">and</span> (<span class="attribute">max-width</span>: <span class="number">479px</span>) {</span><br><span class="line">    <span class="comment">/* 此处添加了内容 */</span></span><br><span class="line">     <span class="selector-class">.mobile-title-hidden</span> {</span><br><span class="line">         <span class="attribute">transition</span>: all <span class="number">0.5s</span>;</span><br><span class="line">         <span class="attribute">transform</span>: <span class="built_in">translateX</span>(-<span class="number">300%</span>);</span><br><span class="line">     }</span><br><span class="line">     <span class="comment">/* 上面的是添加的内容 */</span></span><br><span class="line">     <span class="selector-class">.navbar-mobile-right</span> {</span><br><span class="line">         <span class="attribute">display</span>: flex;</span><br><span class="line">         <span class="attribute">flex-direction</span>: row;</span><br><span class="line">         <span class="attribute">align-items</span>: center;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.search</span> <span class="selector-class">.search-btn</span> {</span><br><span class="line">         <span class="attribute">cursor</span>: pointer;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.search</span> <span class="selector-class">.form-search</span> {</span><br><span class="line">         <span class="attribute">display</span>: none;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> {</span><br><span class="line">         <span class="attribute">transition</span>: width <span class="number">0.3s</span>;</span><br><span class="line">         <span class="attribute">position</span>: absolute;</span><br><span class="line">         <span class="attribute">top</span>: <span class="number">0px</span>;</span><br><span class="line">         <span class="attribute">left</span>: <span class="number">0px</span>;</span><br><span class="line">         <span class="attribute">right</span>: <span class="number">50px</span>;</span><br><span class="line">         <span class="attribute">padding-left</span>: <span class="number">15px</span>;</span><br><span class="line">         <span class="attribute">background</span>: transparent;</span><br><span class="line">         <span class="attribute">height</span>: <span class="number">80px</span>;</span><br><span class="line">         <span class="attribute">display</span>: flex;</span><br><span class="line">         <span class="attribute">flex-direction</span>: row;</span><br><span class="line">         <span class="attribute">margin-right</span>: <span class="number">15px</span>;</span><br><span class="line">         <span class="attribute">box-sizing</span>: border-box;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> <span class="selector-class">.form-search</span> {</span><br><span class="line">         <span class="attribute">display</span>: block; </span><br><span class="line">         <span class="attribute">flex</span>: <span class="number">1</span>;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> <span class="selector-class">.input</span> {</span><br><span class="line">         <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">     } </span><br><span class="line">    <span class="comment">/* 此处添加了内容 */</span></span><br><span class="line">     <span class="selector-class">.open-search</span> {</span><br><span class="line">         <span class="attribute">position</span>: absolute;</span><br><span class="line">         <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">         <span class="attribute">right</span>: <span class="number">15px</span>;</span><br><span class="line">     }</span><br><span class="line"> }</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 原始内容 */</span></span><br><span class="line"><span class="comment">/* @media screen and (max-width: 479px) {</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    .navbar-mobile-right {</span></span><br><span class="line"><span class="comment">        display: flex;</span></span><br><span class="line"><span class="comment">        flex-direction: row;</span></span><br><span class="line"><span class="comment">        align-items: center;</span></span><br><span class="line"><span class="comment">    }</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    .search .search-btn {</span></span><br><span class="line"><span class="comment">        cursor: pointer;</span></span><br><span class="line"><span class="comment">    }</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    .search .form-search {</span></span><br><span class="line"><span class="comment">        display: none;</span></span><br><span class="line"><span class="comment">    }</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    .mobile-search {</span></span><br><span class="line"><span class="comment">        position: absolute;</span></span><br><span class="line"><span class="comment">        top: 0px;</span></span><br><span class="line"><span class="comment">        left: 0px;</span></span><br><span class="line"><span class="comment">        right: 50px;</span></span><br><span class="line"><span class="comment">        padding-left: 15px;</span></span><br><span class="line"><span class="comment">        background: #fff;</span></span><br><span class="line"><span class="comment">        height: 80px;</span></span><br><span class="line"><span class="comment">        display: flex;</span></span><br><span class="line"><span class="comment">        flex-direction: row;</span></span><br><span class="line"><span class="comment">        margin-right: 15px;</span></span><br><span class="line"><span class="comment">    }</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    .mobile-search .form-search {</span></span><br><span class="line"><span class="comment">        display: block; </span></span><br><span class="line"><span class="comment">        flex: 1;</span></span><br><span class="line"><span class="comment">    }</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    .mobile-search .input {</span></span><br><span class="line"><span class="comment">        width: 100%;</span></span><br><span class="line"><span class="comment">    } </span></span><br><span class="line"><span class="comment">} */</span></span><br><span class="line"><span class="comment">/* 以上是搜索框 */</span></span><br></pre></td></tr></tbody></table></figure></li>
+</ul>
+</blockquote>
+</blockquote>
+<blockquote>
+<ul>
+<li>p.s. 由于css需要被style.styl引用，故需在/themes/Chic/source/css/style.styl文件首行加入@import “_lib/search.css”</li>
+</ul>
+</blockquote>
+<h3 id="创建搜索栏："><a href="#创建搜索栏：" class="headerlink" title="创建搜索栏："></a>创建搜索栏：</h3><blockquote>
+<ul>
+<li><p>在<code>./themes/Chic/layout/_partial/</code>下新建文件<code>search.ejs</code>，写入以下代码：</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">&lt;% if(config.search &amp;&amp; config.search.enable ) { %&gt;</span><br><span class="line">    &lt;div class="search "&gt;</span><br><span class="line">        &lt;div class="search-btn" onClick="searchToggle()"&gt;</span><br><span class="line">            &lt;img src="&lt;%- url_for(theme.searchImg) %&gt;" class="search-btn-img" /&gt;</span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">        &lt;form class="form-search"&gt;</span><br><span class="line">            &lt;input class="input" placeholder="点此搜索" autocomplete="off" id="&lt;%= name %&gt;-search-input"/&gt;</span><br><span class="line">        &lt;/form&gt;</span><br><span class="line">    &lt;/div&gt;</span><br><span class="line">&lt;% } %&gt;</span><br></pre></td></tr></tbody></table></figure>
+
+<p>p.s.这里还要提一点，该增加的搜索框会与原页面的排版有冲突，故在此步我们还需要对/themes/Chic/source/css/中的layout.styl修改如下（注意只对.navbar-right进行了修改）：</p>
+<p>修改前：</p>
+<figure class="highlight stylus"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.navbar</span>   </span><br><span class="line">    <span class="attribute">height</span> <span class="number">4rem</span>  </span><br><span class="line">    <span class="attribute">line-height</span> <span class="number">4rem</span>  </span><br><span class="line">    <span class="attribute">width</span> <span class="number">100%</span>  </span><br><span class="line">    <span class="selector-class">.container</span>   </span><br><span class="line">        <span class="attribute">width</span> auto  </span><br><span class="line">        <span class="attribute">max-width</span> <span class="number">1200px</span>  </span><br><span class="line">        <span class="attribute">text-align</span> center  </span><br><span class="line">        <span class="attribute">margin</span> <span class="number">0</span> auto  </span><br><span class="line">        <span class="attribute">display</span> flex  </span><br><span class="line">        <span class="attribute">justify-content</span> space-between</span><br></pre></td></tr></tbody></table></figure>
+
+<p>修改后：</p>
+<figure class="highlight stylus"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-class">.navbar</span> </span><br><span class="line">  <span class="attribute">height</span> <span class="number">4rem</span></span><br><span class="line">  <span class="attribute">line-height</span> <span class="number">4rem</span></span><br><span class="line">  <span class="attribute">width</span> <span class="number">100%</span></span><br><span class="line">  <span class="selector-class">.container</span> </span><br><span class="line">    <span class="attribute">width</span> auto</span><br><span class="line">    <span class="attribute">max-width</span> <span class="number">1200px</span></span><br><span class="line">    <span class="attribute">text-align</span> center</span><br><span class="line">    <span class="attribute">padding-left</span> <span class="number">1em</span></span><br><span class="line">    <span class="attribute">padding-right</span> <span class="number">1em</span></span><br><span class="line">    <span class="attribute">margin</span> <span class="number">0</span> auto</span><br><span class="line">    <span class="attribute">display</span> flex</span><br><span class="line">    <span class="attribute">justify-content</span> space-between</span><br><span class="line">    <span class="selector-class">.navbar-right</span></span><br><span class="line">      <span class="attribute">display</span> flex</span><br><span class="line">      <span class="attribute">flex-direction</span> row</span><br><span class="line">      <span class="attribute">align-items</span> center</span><br></pre></td></tr></tbody></table></figure></li>
+</ul>
+</blockquote>
+<h3 id="header内添加搜索框："><a href="#header内添加搜索框：" class="headerlink" title="header内添加搜索框："></a>header内添加搜索框：</h3><blockquote>
+<p>打开<code>/themes/Chic/layout/_partial/header.ejs</code>，将下面代码的5-6行，23-27行分别添加到相应位置完成pc和mobile搜索框的添加。</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">&lt;nav class="navbar"&gt;</span><br><span class="line">    &lt;div class="container"&gt;</span><br><span class="line">        &lt;!-- &lt;div class="navbar-header header-logo"&gt;&lt;a href="&lt;%- config.root %&gt;"&gt;&lt;%= theme.navname %&gt;&lt;/a&gt;&lt;/div&gt; --&gt;</span><br><span class="line">        &lt;div class="navbar-header header-logo"&gt;&lt;a href="&lt;%- config.root %&gt;"&gt;&lt;i class="iconfont icon-zhuye" style="font-size: 1em;"&gt;&lt;/i&gt;&lt;%= theme.navname %&gt;&lt;/a&gt;&lt;/div&gt;</span><br><span class="line">        &lt;div class="menu navbar-right"&gt;</span><br><span class="line">            &lt;!-- 这里表示的是pc端搜索框 --&gt;</span><br><span class="line">            &lt;% var defaultName = 'pc' %&gt;</span><br><span class="line">            &lt;%- partial('_partial/search', { name: defaultName }) %&gt;</span><br><span class="line">            &lt;% for (var i in theme.nav){ %&gt;</span><br><span class="line">            &lt;a class="menu-item" href="&lt;%- url_for(theme.nav[i]) %&gt;"&gt;&lt;%= i %&gt;&lt;/a&gt;</span><br><span class="line">            &lt;% } %&gt;</span><br><span class="line">            &lt;input id="switch_default" type="checkbox" class="switch_default"&gt;</span><br><span class="line">            &lt;label for="switch_default" class="toggleBtn"&gt;&lt;/label&gt;</span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">    &lt;/div&gt;</span><br><span class="line">&lt;/nav&gt;</span><br><span class="line"></span><br><span class="line">&lt;%# mobile %&gt;</span><br><span class="line">&lt;nav class="navbar-mobile" id="nav-mobile"&gt;</span><br><span class="line">    &lt;div class="container"&gt;</span><br><span class="line">        &lt;div class="navbar-header"&gt;</span><br><span class="line">            &lt;div&gt;</span><br><span class="line">                &lt;a href="&lt;%- config.root %&gt;"&gt;&lt;%= theme.navname %&gt;&lt;/a&gt;&lt;a id="mobile-toggle-theme"&gt;·&amp;nbsp;Light&lt;/a&gt;</span><br><span class="line">            &lt;/div&gt;</span><br><span class="line">            &lt;div class="navbar-mobile-right"&gt;</span><br><span class="line">                &lt;% var type = 'mobile' %&gt;</span><br><span class="line">                &lt;%- partial('_partial/search', { name: type }) %&gt;</span><br><span class="line">                &lt;div class="menu-toggle" onclick="mobileBtn()"&gt;&amp;#9776; 目录&lt;/div&gt;</span><br><span class="line">            &lt;/div&gt;</span><br><span class="line"></span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">        &lt;div class="menu" id="mobile-menu"&gt;</span><br><span class="line">            &lt;% for (var i in theme.nav){ %&gt;</span><br><span class="line">            &lt;a class="menu-item" href="&lt;%- url_for(theme.nav[i]) %&gt;"&gt;&lt;%= i %&gt;&lt;/a&gt;</span><br><span class="line">            &lt;% } %&gt;</span><br><span class="line">        &lt;/div&gt;</span><br><span class="line">    &lt;/div&gt;</span><br><span class="line">&lt;/nav&gt;</span><br></pre></td></tr></tbody></table></figure>
+
+
+</blockquote>
+<h3 id="添加搜索框的js："><a href="#添加搜索框的js：" class="headerlink" title="添加搜索框的js："></a>添加搜索框的js：</h3><blockquote>
+<ul>
+<li><p>在<code>./themes/Chic/layout/_plugin/</code>下新建文件<code>search.ejs</code>，并写入以下代码：</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br></pre></td><td class="code"><pre><span class="line">&lt;script&gt;</span><br><span class="line">    // function searchToggle() {</span><br><span class="line">    //     const width = $(document.body).width()</span><br><span class="line">    //     if(width &gt; 479) {</span><br><span class="line">    //         return;</span><br><span class="line">    //     }</span><br><span class="line">    //     const search = $('.search');</span><br><span class="line">    //     const searchForm = $('.form-search')</span><br><span class="line"></span><br><span class="line">    //     if(!search.hasClass("mobile-search")) {</span><br><span class="line">    //         search.addClass("mobile-search");</span><br><span class="line">    //     } else {</span><br><span class="line">    //         search.removeClass("mobile-search");</span><br><span class="line">    //     } </span><br><span class="line">    // }</span><br><span class="line"></span><br><span class="line">    function searchToggle() {</span><br><span class="line">        const width = $(document.body).width()</span><br><span class="line">        if(width &gt; 479) {</span><br><span class="line">            return;</span><br><span class="line">        }</span><br><span class="line">        const search = $('.search');</span><br><span class="line">        const searchForm = $('.form-search');</span><br><span class="line">        const menuToggle = $('.menu-toggle');</span><br><span class="line">        const title = $('.navbar-header-title ');</span><br><span class="line"></span><br><span class="line">        if(!search.hasClass("mobile-search")) {</span><br><span class="line">            search.addClass("mobile-search");</span><br><span class="line">            menuToggle.addClass("open-search")</span><br><span class="line">            title.addClass("mobile-title-hidden")</span><br><span class="line">        } else {</span><br><span class="line">            search.removeClass("mobile-search");</span><br><span class="line">            menuToggle.removeClass("open-search")</span><br><span class="line">            // title.css({visibility: 'visible'})</span><br><span class="line">            title.removeClass("mobile-title-hidden")</span><br><span class="line">        } </span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    function search(searchInputEl, formEl, flag) {</span><br><span class="line">        const path = "&lt;%= config.root %&gt;" + "&lt;%= config.search.path %&gt;"; // 可以在public 下查看这个search.json</span><br><span class="line">        $(formEl).submit(function(e){</span><br><span class="line">            e.preventDefault();</span><br><span class="line">            let target = null</span><br><span class="line">            if(searchInputEl == null) {</span><br><span class="line">                const screenWidth = $(document.body).width();</span><br><span class="line">                target = screenWidth &gt; 479 ? $('#pc-search-input') : $('#mobile-search-input');</span><br><span class="line">                console.log(target);</span><br><span class="line">            } else {</span><br><span class="line">                target = $(searchInputEl)</span><br><span class="line">            }</span><br><span class="line"></span><br><span class="line">            if(!flag &amp;&amp; target.val() === '') {</span><br><span class="line">                return ;</span><br><span class="line">            }</span><br><span class="line"></span><br><span class="line">            $("#u-search").fadeIn(500, function() {</span><br><span class="line">                $("body &gt; .wrapper").addClass("modal-active");</span><br><span class="line"></span><br><span class="line">                $.ajax({</span><br><span class="line">                    url: path,</span><br><span class="line">                    dataType: "json",</span><br><span class="line">                    beforeSend: function (xhr) {</span><br><span class="line">                        $input = target.val();</span><br><span class="line">                        $(".form-input").val($input);</span><br><span class="line">                        const loadingBar = $('.search-loading-bar') </span><br><span class="line">                        loadingBar.css({</span><br><span class="line">                            width:'100%',</span><br><span class="line">                            display: 'block'</span><br><span class="line">                        });</span><br><span class="line">                    },</span><br><span class="line">                    success: function( datas ) {</span><br><span class="line">                        console.log(datas);</span><br><span class="line">                        const $resultPanel = $(".modal-body")[0];</span><br><span class="line">                        let str = `&lt;ul class="modal-results"&gt;`;</span><br><span class="line">                        var keywords = $(".form-input").val().trim().toLowerCase().split(/[\s\-]+/);</span><br><span class="line">                        $resultPanel.innerHTML = "";</span><br><span class="line">                        let hasResult = false</span><br><span class="line">                        let text = `&lt;div class="no-result"&gt;找不到与关键词相关的内容....&lt;/div&gt;`;</span><br><span class="line"></span><br><span class="line">                        if ($(".form-input").val().trim().length &lt;= 0) {</span><br><span class="line">                            // 没有结果</span><br><span class="line">                            $resultPanel.innerHTML = text;</span><br><span class="line">                            return;</span><br><span class="line">                        }</span><br><span class="line">                        datas.forEach(function (data, index) {</span><br><span class="line">                            var isMatch = true;</span><br><span class="line">                            if (!data.title || data.title.trim() === '') {</span><br><span class="line">                                data.title = "Untitled";</span><br><span class="line">                            }</span><br><span class="line">                            var data_title = data.title.trim().toLowerCase();</span><br><span class="line">                            var data_content = data.content &amp;&amp; data.content.trim().replace(/&lt;[^&gt;]+&gt;/g, "").toLowerCase() || '';</span><br><span class="line">                            var data_url = data.url;</span><br><span class="line">                            var index_title = -1;</span><br><span class="line">                            var index_content = -1;</span><br><span class="line">                            var first_occur = -1;</span><br><span class="line">                            // only match artiles with not empty contents</span><br><span class="line">                            if (data_content !== '') {</span><br><span class="line">                                keywords.forEach(function (keyword, i) {</span><br><span class="line">                                    index_title = data_title.indexOf(keyword);</span><br><span class="line">                                    index_content = data_content.indexOf(keyword);</span><br><span class="line"></span><br><span class="line">                                    if (index_title &lt; 0 &amp;&amp; index_content &lt; 0) {</span><br><span class="line">                                        isMatch = false;</span><br><span class="line">                                    } else {</span><br><span class="line">                                        hasResult = true</span><br><span class="line">                                        if (index_content &lt; 0) {</span><br><span class="line">                                            index_content = 0;</span><br><span class="line">                                        }</span><br><span class="line">                                        if (i == 0) {</span><br><span class="line">                                            first_occur = index_content;</span><br><span class="line">                                        }</span><br><span class="line">                                    }</span><br><span class="line">                                });</span><br><span class="line">                            } else {</span><br><span class="line">                                isMatch = false;</span><br><span class="line">                            }</span><br><span class="line">                            // show search results</span><br><span class="line">                            if (isMatch) {</span><br><span class="line">                                str += `&lt;li class='result-item'&gt;&lt;a href='${data_url}' class='result-item-detail'&gt; &lt;span class="title"&gt;${data_title}&lt;/span&gt;`;</span><br><span class="line">                                var content = data.content.trim().replace(/&lt;[^&gt;]+&gt;/g, "");</span><br><span class="line">                                if (first_occur &gt;= 0) {</span><br><span class="line">                                    // cut out 200 characters</span><br><span class="line">                                    var start = first_occur - 40;</span><br><span class="line">                                    var end = first_occur + 160;</span><br><span class="line"></span><br><span class="line">                                    if (start &lt; 0) {</span><br><span class="line">                                        start = 0;</span><br><span class="line">                                    }</span><br><span class="line"></span><br><span class="line">                                    if (start == 0) {</span><br><span class="line">                                        end = 200;</span><br><span class="line">                                    }</span><br><span class="line"></span><br><span class="line">                                    if (end &gt; content.length) {</span><br><span class="line">                                        end = content.length;</span><br><span class="line">                                    }</span><br><span class="line"></span><br><span class="line">                                    var match_content = content.substring(start, end);</span><br><span class="line"></span><br><span class="line">                                    // highlight all keywords</span><br><span class="line">                                    keywords.forEach(function (keyword) {</span><br><span class="line">                                        var regS = new RegExp(keyword, "gi");</span><br><span class="line">                                        match_content = match_content.replace(regS, `&lt;em class="search-keyword"&gt;${keyword}&lt;/em&gt;`);</span><br><span class="line">                                    });</span><br><span class="line"></span><br><span class="line">                                    str += `&lt;span class="content"&gt; ${match_content} ...&lt;/span&gt;&lt;/a&gt;`;</span><br><span class="line">                                }</span><br><span class="line">                                str += "&lt;/li&gt;";</span><br><span class="line">                            }</span><br><span class="line">                        });</span><br><span class="line">                        str += "&lt;/ul&gt;";</span><br><span class="line">                        if(hasResult) {</span><br><span class="line">                            $resultPanel.innerHTML = str;</span><br><span class="line">                        } else {</span><br><span class="line">                            $resultPanel.innerHTML = text;</span><br><span class="line">                        }</span><br><span class="line"></span><br><span class="line">                    },</span><br><span class="line">                    complete: function() {</span><br><span class="line">                        setTimeout(() =&gt; {</span><br><span class="line">                                const loadingBar = $('.search-loading-bar') </span><br><span class="line">                                loadingBar.css({</span><br><span class="line">                                    width:'0%',</span><br><span class="line">                                    display: 'none'</span><br><span class="line">                                });</span><br><span class="line">                        }, 300)</span><br><span class="line">                    }</span><br><span class="line">                });</span><br><span class="line">            })</span><br><span class="line"></span><br><span class="line">        });</span><br><span class="line">    }</span><br><span class="line"></span><br><span class="line">    $(document).ready(function() {</span><br><span class="line">        $('.modal-close').click(function () { </span><br><span class="line">            $("#u-search").fadeOut();</span><br><span class="line">            $("body &gt; .wrapper").removeClass("modal-active")</span><br><span class="line">        })</span><br><span class="line"></span><br><span class="line">        $('.modal-overlay').click(function() {</span><br><span class="line">            $("#u-search").fadeOut();</span><br><span class="line">            $("body &gt; .wrapper").removeClass("modal-active")</span><br><span class="line">        })</span><br><span class="line">        search(null, ".form-search", false)</span><br><span class="line">        search("#u-search-modal-form .form-input", ".u-search-modal-form", true)</span><br><span class="line">    })</span><br><span class="line">&lt;/script&gt;</span><br></pre></td></tr></tbody></table></figure></li>
+</ul>
+</blockquote>
+<h3 id="启动搜索框的js："><a href="#启动搜索框的js：" class="headerlink" title="启动搜索框的js："></a>启动搜索框的js：</h3><blockquote>
+<ul>
+<li><p>注意此部分会最终决定显示效果，若产生了错误的配置，会产生如下图的错误，解决思路见[[Hexo部署的页面出现错误，一个debug思路与工具]]</p>
+</li>
+<li><p>打开<code>./themes/Chic/layout/_partial/head.ejs</code>，尾行添加以下代码：</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;!-- 搜索的部分 --&gt;</span><br><span class="line">&lt;%# search %&gt;</span><br><span class="line"></span><br><span class="line">&lt;% if(config.search &amp;&amp; config.search.enable ) { %&gt;</span><br><span class="line">    &lt;%- partial('_plugins/search.ejs') %&gt;</span><br><span class="line">&lt;% } %&gt;</span><br></pre></td></tr></tbody></table></figure></li>
+</ul>
+</blockquote>
+<h3 id="手机端源码调整："><a href="#手机端源码调整：" class="headerlink" title="手机端源码调整："></a>手机端源码调整：</h3><blockquote>
+<ul>
+<li><p>打开<code>themes\Chic\layout\_plugins\search.ejs</code>，进行修改</p>
+<p><strong>修改前</strong>：</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">function searchToggle() {</span><br><span class="line">	const width = $(document.body).width()</span><br><span class="line">	if(width &gt; 479) {</span><br><span class="line">		return;</span><br><span class="line">	}</span><br><span class="line"></span><br><span class="line">const search = $('.search');</span><br><span class="line">	const searchForm = $('.form-search')</span><br><span class="line"></span><br><span class="line">	if(!search.hasClass("mobile-search")) {</span><br><span class="line">	search.addClass("mobile-search");</span><br><span class="line"> } else {</span><br><span class="line">search.removeClass("mobile-search");</span><br><span class="line">       }</span><br><span class="line">    }</span><br></pre></td></tr></tbody></table></figure>
+
+<p><strong>修改后</strong>：</p>
+<figure class="highlight plaintext"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">function searchToggle() {</span><br><span class="line">    const width = $(document.body).width()</span><br><span class="line">    if(width &gt; 479) {</span><br><span class="line">        return;</span><br><span class="line">    }</span><br><span class="line">    const search = $('.search');</span><br><span class="line">    const searchForm = $('.form-search');</span><br><span class="line">    const menuToggle = $('.menu-toggle');</span><br><span class="line">    const title = $('.navbar-header-title ');</span><br><span class="line"></span><br><span class="line">    if(!search.hasClass("mobile-search")) {</span><br><span class="line">        search.addClass("mobile-search");</span><br><span class="line">        menuToggle.addClass("open-search")</span><br><span class="line">        title.addClass("mobile-title-hidden")</span><br><span class="line">    } else {</span><br><span class="line">        search.removeClass("mobile-search");</span><br><span class="line">        menuToggle.removeClass("open-search")</span><br><span class="line">        // title.css({visibility: 'visible'})</span><br><span class="line">        title.removeClass("mobile-title-hidden")</span><br><span class="line">    } </span><br><span class="line">}</span><br></pre></td></tr></tbody></table></figure>
+</li>
+<li><p>修改 <code>Chic\source\css\_lib\search.css</code> 样式文件</p>
+<p><strong>修改前</strong>：</p>
+<figure class="highlight css"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 搜索框修改 */</span></span><br><span class="line"><span class="keyword">@media</span> screen <span class="keyword">and</span> (<span class="attribute">max-width</span>: <span class="number">479px</span>) {</span><br><span class="line">     <span class="selector-class">.navbar-mobile-right</span> {</span><br><span class="line">         <span class="attribute">display</span>: flex;</span><br><span class="line">         <span class="attribute">flex-direction</span>: row;</span><br><span class="line">         <span class="attribute">align-items</span>: center;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.search</span> <span class="selector-class">.search-btn</span> {</span><br><span class="line">         <span class="attribute">cursor</span>: pointer;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.search</span> <span class="selector-class">.form-search</span> {</span><br><span class="line">         <span class="attribute">display</span>: none;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> {</span><br><span class="line">         <span class="attribute">transition</span>: width <span class="number">0.3s</span>;</span><br><span class="line">         <span class="attribute">position</span>: absolute;</span><br><span class="line">         <span class="attribute">top</span>: <span class="number">0px</span>;</span><br><span class="line">         <span class="attribute">left</span>: <span class="number">0px</span>;</span><br><span class="line">         <span class="attribute">right</span>: <span class="number">50px</span>;</span><br><span class="line">         <span class="attribute">padding-left</span>: <span class="number">15px</span>;</span><br><span class="line">         <span class="attribute">background</span>: transparent;</span><br><span class="line">         <span class="attribute">height</span>: <span class="number">80px</span>;</span><br><span class="line">         <span class="attribute">display</span>: flex;</span><br><span class="line">         <span class="attribute">flex-direction</span>: row;</span><br><span class="line">         <span class="attribute">margin-right</span>: <span class="number">15px</span>;</span><br><span class="line">         <span class="attribute">box-sizing</span>: border-box;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> <span class="selector-class">.form-search</span> {</span><br><span class="line">         <span class="attribute">display</span>: block; </span><br><span class="line">         <span class="attribute">flex</span>: <span class="number">1</span>;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> <span class="selector-class">.input</span> {</span><br><span class="line">         <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">     } </span><br><span class="line"> }</span><br></pre></td></tr></tbody></table></figure>
+
+<p><strong>修改后</strong>：</p>
+<figure class="highlight css"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 搜索框修改 */</span></span><br><span class="line"><span class="keyword">@media</span> screen <span class="keyword">and</span> (<span class="attribute">max-width</span>: <span class="number">479px</span>) {</span><br><span class="line">    <span class="comment">/* 此处添加了内容 */</span></span><br><span class="line">     <span class="selector-class">.mobile-title-hidden</span> {</span><br><span class="line">         <span class="attribute">transition</span>: all <span class="number">0.5s</span>;</span><br><span class="line">         <span class="attribute">transform</span>: <span class="built_in">translateX</span>(-<span class="number">300%</span>);</span><br><span class="line">     }</span><br><span class="line">     <span class="comment">/* 上面的是添加的内容 */</span></span><br><span class="line">     <span class="selector-class">.navbar-mobile-right</span> {</span><br><span class="line">         <span class="attribute">display</span>: flex;</span><br><span class="line">         <span class="attribute">flex-direction</span>: row;</span><br><span class="line">         <span class="attribute">align-items</span>: center;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.search</span> <span class="selector-class">.search-btn</span> {</span><br><span class="line">         <span class="attribute">cursor</span>: pointer;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.search</span> <span class="selector-class">.form-search</span> {</span><br><span class="line">         <span class="attribute">display</span>: none;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> {</span><br><span class="line">         <span class="attribute">transition</span>: width <span class="number">0.3s</span>;</span><br><span class="line">         <span class="attribute">position</span>: absolute;</span><br><span class="line">         <span class="attribute">top</span>: <span class="number">0px</span>;</span><br><span class="line">         <span class="attribute">left</span>: <span class="number">0px</span>;</span><br><span class="line">         <span class="attribute">right</span>: <span class="number">50px</span>;</span><br><span class="line">         <span class="attribute">padding-left</span>: <span class="number">15px</span>;</span><br><span class="line">         <span class="attribute">background</span>: transparent;</span><br><span class="line">         <span class="attribute">height</span>: <span class="number">80px</span>;</span><br><span class="line">         <span class="attribute">display</span>: flex;</span><br><span class="line">         <span class="attribute">flex-direction</span>: row;</span><br><span class="line">         <span class="attribute">margin-right</span>: <span class="number">15px</span>;</span><br><span class="line">         <span class="attribute">box-sizing</span>: border-box;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> <span class="selector-class">.form-search</span> {</span><br><span class="line">         <span class="attribute">display</span>: block; </span><br><span class="line">         <span class="attribute">flex</span>: <span class="number">1</span>;</span><br><span class="line">     }</span><br><span class="line">     <span class="selector-class">.mobile-search</span> <span class="selector-class">.input</span> {</span><br><span class="line">         <span class="attribute">width</span>: <span class="number">100%</span>;</span><br><span class="line">     } </span><br><span class="line">    <span class="comment">/* 此处添加了内容 */</span></span><br><span class="line">     <span class="selector-class">.open-search</span> {</span><br><span class="line">         <span class="attribute">position</span>: absolute;</span><br><span class="line">         <span class="attribute">top</span>: <span class="number">0</span>;</span><br><span class="line">         <span class="attribute">right</span>: <span class="number">15px</span>;</span><br><span class="line">     }</span><br><span class="line"> }</span><br></pre></td></tr></tbody></table></figure></li>
+</ul>
+</blockquote>
+<p>p.s.<code>在创建搜索栏一节</code>（只对.navbar-right进行了修改）但下面<code>After的.container</code>中有两个padding操作，需要调整才能适用的。本网站去除这一两行padding页面就恢复正常了。</p>
+<h2 id="更换网站logo："><a href="#更换网站logo：" class="headerlink" title="更换网站logo："></a><strong><u>更换网站logo</u>：</strong></h2><h3 id="寻找logo图片："><a href="#寻找logo图片：" class="headerlink" title="寻找logo图片："></a>寻找logo图片：</h3><blockquote>
+<p>选择一张<strong>32*32</strong>大小的图片放置于<code>.\myblog\themes\Chic\source\image\</code>下，并取名为：<code>favicon.ico</code></p>
+</blockquote>
+<h3 id="更改主題目录下的-config-yml："><a href="#更改主題目录下的-config-yml：" class="headerlink" title="更改主題目录下的_config.yml："></a>更改<strong>主題</strong>目录下的<code>_config.yml</code>：</h3><blockquote>
+<figure class="highlight yaml"><table><tbody><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># favicon</span></span><br><span class="line"><span class="attr">favicon:</span> <span class="string">/image/favicon.ico</span></span><br></pre></td></tr></tbody></table></figure>
+</blockquote>
+
+        </div>
+
+        
+            <section class="post-copyright">
+                
+                    <p class="copyright-item">
+                        <span>Author:</span>
+                        <span>Zirui Lee</span>
+                    </p>
+                
+                
+                    <p class="copyright-item">
+                        <span>Permalink:</span>
+                        <span><a href="https://bgyxcarl.github.io/2024/05/11/%E7%BD%91%E7%AB%99%E9%85%8D%E7%BD%AE/">https://bgyxcarl.github.io/2024/05/11/%E7%BD%91%E7%AB%99%E9%85%8D%E7%BD%AE/</a></span>
+                    </p>
+                
+                
+                    <p class="copyright-item">
+                        <span>License:</span>
+                        <span>Copyright (c) 2019 <a target="_blank" rel="noopener" href="http://creativecommons.org/licenses/by-nc/4.0/">CC-BY-NC-4.0</a> LICENSE</span>
+                    </p>
+                
+                
+                     <p class="copyright-item">
+                         <span>Slogan:</span>
+                         <span>Do you believe in <strong>DESTINY</strong>?</span>
+                     </p>
+                
+
+            </section>
+        
+        <section class="post-tags">
+            <div>
+                <span>Tag(s):</span>
+                <span class="tag">
+                    
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">back</a>
+                <span>· </span>
+                <a href="/">home</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+                <a class="prev" rel="prev" href="/2024/05/21/DefiMooc_1/"></a>
+            
+            
+            <a class="next" rel="next" href="/2024/05/10/hello-world/">Hello World</a>
+            
+        </section>
+
+
+    </article>
+</div>
+
+            </div>
+            <footer id="footer" class="footer">
+    <div class="copyright">
+    <span>
+        © Zirui Lee 
+          
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+<span class="site-uv">
+
+ | Total Visitors:
+
+ <i class="busuanzi-value" id="busuanzi_value_site_uv"></i>
+
+</span>&nbsp;
+
+
+
+
+
+<span class="site-pv">
+
+ | Total Visits:
+
+ <i class="busuanzi-value" id="busuanzi_value_site_pv"></i>
+
+</span>
+
+  
+        
+    </span>
+    </div>
+</footer>
+
+
+    </div>
+</body>
+
+</html>
+
+
+<!-- 搜索功能 -->
+<!-- Chic/layout.ejs -->
+<div id="u-search">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="container">
+                <form id="u-search-modal-form" class="u-search-modal-form">
+                    <button type="submit" class="form-submit-btn">
+                        <img src="/image/search.png" class="search-btn-img" />
+                    </button>
+                    <input placeholder="搜索内容..." class="form-input" id="modal-form-input">
+                </form>
+                <a class="modal-close">x</a>
+            </div>
+            <div class="search-loading">
+                <div class="search-loading-bar"></div>
+            </div>
+        </div>
+        <div class="modal-body">
+        </div>
+    </div>
+    <div class="modal-overlay"></div>
+</div>
