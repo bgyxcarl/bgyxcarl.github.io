@@ -14,6 +14,12 @@ const ap = new APlayer({
         artist: 'Current Joys',
         url: 'http://music.163.com/song/media/outer/url?id=1324068806.mp3',
         cover: 'http://p2.music.126.net/PY0Gt5OeHOWzbWn6Zp8vgQ==/109951166443166722.jpg?param=300x300',
+      },
+      {
+        name: 'Everything Reminds Me Of You',
+        artist: 'Take Care',
+        url: 'http://music.163.com/song/media/outer/url?id=1981482326.mp3',
+        cover: 'http://p2.music.126.net/scwV3CFG6XSgE9O7KyNhUA==/109951167878653462.jpg?param=300x300',
       }
     ]
 });
