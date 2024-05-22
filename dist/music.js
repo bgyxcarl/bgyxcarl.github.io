@@ -20,6 +20,6 @@ const ap = new APlayer({
         artist: 'Take Care',
         url: 'http://music.163.com/song/media/outer/url?id=1981482326.mp3',
         cover: 'http://p2.music.126.net/scwV3CFG6XSgE9O7KyNhUA==/109951167878653462.jpg?param=300x300',
-      }
+      },
     ]
 });
