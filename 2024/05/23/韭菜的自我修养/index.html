@@ -15,7 +15,7 @@
 
 
 
-<title>Archives: 2024/5 | PhysicalGhost</title>
+<title>PhysicalGhost</title>
 
 
 
@@ -354,103 +354,186 @@
     }
 </script>
             <div class="main">
-                <div class="post-wrap archive">
+                <div class="container">
     
     
-        
-
-        
-            <h3>2024</h3>
-        
-
-        <article class="archive-item">
-            <a class="archive-item-link" href="/2024/05/23/%E6%BE%B3%E6%B4%B2%E7%B4%A7%E7%BC%BA%E8%81%8C%E4%BD%8D%E5%8C%B9%E9%85%8D/">
-                <li>
-                
-                <li>
-            </a>
-            <span class="archive-item-date">May 23, 2024</span>
-        </article>
-    
-        
-
-        
-
-        <article class="archive-item">
-            <a class="archive-item-link" href="/2024/05/23/%E9%9F%AD%E8%8F%9C%E7%9A%84%E8%87%AA%E6%88%91%E4%BF%AE%E5%85%BB/">
-                <li>
-                
-                <li>
-            </a>
-            <span class="archive-item-date">May 23, 2024</span>
-        </article>
-    
-        
-
-        
-
-        <article class="archive-item">
-            <a class="archive-item-link" href="/2024/05/21/DefiMooc_1/">
-                <li>
-                
-                <li>
-            </a>
-            <span class="archive-item-date">May 21, 2024</span>
-        </article>
-    
-        
-
-        
-
-        <article class="archive-item">
-            <a class="archive-item-link" href="/2024/05/11/%E7%BD%91%E7%AB%99%E9%85%8D%E7%BD%AE/">
-                <li>
-                網站配置
-                <li>
-            </a>
-            <span class="archive-item-date">May 11, 2024</span>
-        </article>
-    
-        
-
-        
-
-        <article class="archive-item">
-            <a class="archive-item-link" href="/2024/05/10/hello-world/">
-                <li>
-                Hello World
-                <li>
-            </a>
-            <span class="archive-item-date">May 10, 2024</span>
-        </article>
-    
-    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">Expand all</a>
+        <a onclick="go_top()">Back to top</a>
+        <a onclick="go_bottom()">Go to bottom</a>
+    </div>
 </div>
 
- 
-<style>
+<script>
+    var tocbot_timer;
+    var DEPTH_MAX = 6; // 为 6 时展开所有
+    var tocbot_default_config = {
+        tocSelector: '.tocbot-list',
+        contentSelector: '.post-content',
+        headingSelector: 'h1, h2, h3, h4, h5',
+        orderedList: false,
+        scrollSmooth: true,
+        onClick: extend_click,
+    };
 
-    li{
-   
-    width: 650px;
-   
-    height: 29.5px;
-   
-    /*不换行*/
-   
-    white-space: nowrap;
-   
-    /*溢出的话，隐藏*/
-   
-    overflow: hidden;
-   
-    /*文本溢出时，是否....*/
-   
-    text-overflow: ellipsis;
-   
+    function extend_click() {
+        clearTimeout(tocbot_timer);
+        tocbot_timer = setTimeout(function() {
+            tocbot.refresh(obj_merge(tocbot_default_config, {
+                hasInnerContainers: true
+            }));
+        }, 420); // 这个值是由 tocbot 源码里定义的 scrollSmoothDuration 得来的
     }
-   
-   </style>
+
+    document.ready(function() {
+        tocbot.init(obj_merge(tocbot_default_config, {
+            collapseDepth: 1
+        }));
+    });
+
+    function expand_toc() {
+        var b = document.querySelector('.tocbot-toc-expand');
+        var expanded = b.getAttribute('data-expanded');
+        expanded ? b.removeAttribute('data-expanded') : b.setAttribute('data-expanded', true);
+        tocbot.refresh(obj_merge(tocbot_default_config, {
+            collapseDepth: expanded ? 1 : DEPTH_MAX
+        }));
+        b.innerText = expanded ? 'Expand all' : 'Collapse all';
+    }
+
+    function go_top() {
+        window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function obj_merge(target, source) {
+        for (var item in source) {
+            if (source.hasOwnProperty(item)) {
+                target[item] = source[item];
+            }
+        }
+        return target;
+    }
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title"></h1>
+            
+                <div class="post-meta">
+                    
+                        Author: <a itemprop="author" rel="author" href="/">Zirui Lee</a>
+                    
+
+                    
+                        <span class="post-time">
+                        Date: <a href="#">May 23, 2024&nbsp;&nbsp;8:56:53</a>
+                        </span>
+                    
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <ol>
+<li><p>当身边的人都知道它赚钱的时候，其实这个市场的行情就<strong>到头了</strong>。</p>
+</li>
+<li><p>在交易之前，必须认真研究，深入学习，交易过后，无论输赢，都要<strong>总结归纳</strong>，修正自己的观念和思考以便<strong>完善</strong>下一次的<strong>决策</strong> </p>
+</li>
+<li><p><u>“研究透价值所在之后决定是否买卖”</u>，和<u>“不管三七二十二先下手之后发现不对再去研究价值”</u>当然有着天壤之别，随后的结论和结局都迥异至极。</p>
+</li>
+<li><p>在交易市场里，实力的清楚的定义：长期稳定的低成本现金流</p>
+</li>
+<li><p>提高汇报风险比：</p>
+<ul>
+<li>调整止损线，降低自己的风险承担</li>
+<li>降低每次的交易金额在总资金的占比；</li>
+<li>提高自己在场外的赚钱能力（或者募资能力）；</li>
+<li>选择更为优质的交易标的</li>
+<li>选择最佳的交易时机（比如，若干次暴跌之后再买）</li>
+<li>放长持有时间（比如，穿越一次以上的牛熊）</li>
+</ul>
+</li>
+</ol>
+<h1 id="原则"><a href="#原则" class="headerlink" title="原则"></a>原则</h1><ol>
+<li><p><strong>控制仓位</strong>。永远要保留一定比例或者起码一定数量的现金 –这就好像潜海需要一个氧气罐一样，没得商量。至于比例是多少，数量是多少，没有定理，完全靠你自己琢磨。</p>
+</li>
+<li><p>止损线。永远都要设定一个止损线，并且止损率是要通过研究计算出来的，具体可以参照【交易标的的<strong>日常波动幅度</strong>】、<strong>回报风险比</strong>（<strong>回报风险比 = 可能的回报 ÷ 可能的风险</strong>）。</p>
+</li>
+<li><p>降低交易频次。<strong>只要你在频繁交易，你就依然是一根“韭菜”而已</strong>。频繁交易的结果就是交易手续费累积，累积到吞噬你的所有利润和本金。</p>
+</li>
+<li><p>痛苦 + 反思 = 进步</p>
+</li>
+<li><p><strong>孤独地交易</strong>*。自己做决定 + 参考少数人的意见。</p>
+</li>
+</ol>
+
+        </div>
+
+        
+            <section class="post-copyright">
+                
+                    <p class="copyright-item">
+                        <span>Author:</span>
+                        <span>Zirui Lee</span>
+                    </p>
+                
+                
+                    <p class="copyright-item">
+                        <span>Permalink:</span>
+                        <span><a href="https://bgyxcarl.github.io/2024/05/23/%E9%9F%AD%E8%8F%9C%E7%9A%84%E8%87%AA%E6%88%91%E4%BF%AE%E5%85%BB/">https://bgyxcarl.github.io/2024/05/23/%E9%9F%AD%E8%8F%9C%E7%9A%84%E8%87%AA%E6%88%91%E4%BF%AE%E5%85%BB/</a></span>
+                    </p>
+                
+                
+                    <p class="copyright-item">
+                        <span>License:</span>
+                        <span>Copyright (c) 2019 <a target="_blank" rel="noopener" href="http://creativecommons.org/licenses/by-nc/4.0/">CC-BY-NC-4.0</a> LICENSE</span>
+                    </p>
+                
+                
+                     <p class="copyright-item">
+                         <span>Slogan:</span>
+                         <span>Do you believe in <strong>DESTINY</strong>?</span>
+                     </p>
+                
+
+            </section>
+        
+        <section class="post-tags">
+            <div>
+                <span>Tag(s):</span>
+                <span class="tag">
+                    
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">back</a>
+                <span>· </span>
+                <a href="/">home</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+                <a class="prev" rel="prev" href="/2024/05/23/%E6%BE%B3%E6%B4%B2%E7%B4%A7%E7%BC%BA%E8%81%8C%E4%BD%8D%E5%8C%B9%E9%85%8D/"></a>
+            
+            
+            <a class="next" rel="next" href="/2024/05/21/DefiMooc_1/"></a>
+            
+        </section>
+
+
+    </article>
+</div>
+
             </div>
             <footer id="footer" class="footer">
     <div class="copyright">
